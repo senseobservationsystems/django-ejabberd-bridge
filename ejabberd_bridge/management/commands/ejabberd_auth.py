@@ -53,7 +53,7 @@ class Command(BaseCommand):
         self.logger.debug("Authenticating %s on server %s" % (username, server))
 
         try:
-            user_obj = user_model.objects.get(id=user_id)            
+            user_obj = self.user_model.objects.get(id=user_id)            
             user = authenticate(username=user_obj.username, password=password)
 
             if user :
@@ -70,7 +70,7 @@ class Command(BaseCommand):
         self.logger.debug("Validating %s on server %s" % (user_id, server))
 
         try:
-            user = user_model.objects.get(id=user_id)
+            user = self.user_model.objects.get(id=user_id)
             return True
         except User.DoesNotExist:
             return False
