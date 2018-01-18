@@ -98,4 +98,4 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-DJANGO_EJABBERD_BRIDGE_LOG='/usr/local/var/log/django-bridge.log'
+DJANGO_EJABBERD_BRIDGE_LOG='django-bridge.log'
