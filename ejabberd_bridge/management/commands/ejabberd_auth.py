@@ -17,15 +17,18 @@
 import logging
 import struct
 import sys
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
-__author__ = "fabio"
+__author__ = "taufik"
 
 
 class Command(BaseCommand):
+
     logger = logging.getLogger(__name__)
+    user_model = get_user_model()
 
     def from_ejabberd(self, encoding="utf-8"):
         """
@@ -46,38 +49,28 @@ class Command(BaseCommand):
         sys.stdout.write(b.decode("utf-8"))
         sys.stdout.flush()
 
-    def auth(self, username=None, server="localhost", password=None):
-        self.logger.debug("Authenticating %s with password %s on server %s" % (username, password, server))
-        #TODO: would be nice if this could take server into account
-        user = authenticate(username=username, password=password)
-        return user and user.is_active
+    def auth(self, user_id=None, server="localhost", password=None):
+        self.logger.debug("Authenticating %s on server %s" % (username, server))
 
-    def isuser(self, username=None, server="localhost"):
-        """
-        Checks if the user exists and is active
-        """
-        self.logger.debug("Validating %s on server %s" % (username, server))
-        #TODO: would be nice if this could take server into account
         try:
-            user = get_user_model().objects.get(username=username)
-            if user.is_active:
+            user_obj = self.user_model.objects.get(id=user_id)            
+            user = authenticate(username=user_obj.username, password=password)
+
+            if user :
                 return True
             else:
-                self.logger.warning("User %s is disabled" % username)
                 return False
         except User.DoesNotExist:
             return False
 
-    def setpass(self, username=None, server="localhost", password=None):
+    def isuser(self, user_id=None, server="localhost"):
         """
-        Handles password change
+        Checks if the user exists and is active
         """
-        self.logger.debug("Changing password to %s with new password %s on server %s" % (username, password, server))
-        #TODO: would be nice if this could take server into account
+        self.logger.debug("Validating %s on server %s" % (user_id, server))
+
         try:
-            user = get_user_model().objects.get(username=username)
-            user.set_password(password)
-            user.save()
+            user = self.user_model.objects.get(id=user_id)
             return True
         except User.DoesNotExist:
             return False
@@ -87,11 +80,11 @@ class Command(BaseCommand):
         Gathers parameters from eJabberd and executes authentication
         against django backend
         """
-        #logging.basicConfig(
-        #    level="DEBUG",
-        #    format='%(asctime)s %(levelname)s %(message)s',
-        #    filename="/usr/local/var/log/ejabberd/django-bridge.log",
-        #    filemode='a')
+        logging.basicConfig(
+           level="DEBUG",
+           format='%(asctime)s %(levelname)s %(message)s',
+           filename=settings.DJANGO_EJABBERD_BRIDGE_LOG,
+           filemode='a')
 
         self.logger.debug("Starting serving authentication requests for eJabberd")
         success = False
@@ -104,7 +97,7 @@ class Command(BaseCommand):
                 elif data[0] == "isuser":
                     success = self.isuser(data[1], data[2])
                 elif data[0] == "setpass":
-                    success = self.setpass(data[1], data[2], data[3])
+                    success = False
                 self.to_ejabberd(success)
                 if not options.get("run_forever", True):
                     break
