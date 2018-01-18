@@ -50,7 +50,7 @@ class Command(BaseCommand):
         sys.stdout.flush()
 
     def auth(self, user_id=None, server="localhost", password=None):
-        self.logger.debug("Authenticating %s on server %s" % (username, server))
+        self.logger.debug("Authenticating %s on server %s" % (user_id, server))
 
         try:
             user_obj = self.user_model.objects.get(id=user_id)            
