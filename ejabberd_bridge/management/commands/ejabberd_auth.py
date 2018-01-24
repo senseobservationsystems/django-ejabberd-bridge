@@ -21,6 +21,7 @@ from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
+from knox.auth import TokenAuthentication as KnoxTokenAuthentication
 
 __author__ = "taufik"
 
@@ -53,8 +54,9 @@ class Command(BaseCommand):
         self.logger.debug("Authenticating %s on server %s" % (user_id, server))
 
         try:
-            user_obj = self.user_model.objects.get(id=user_id)            
-            user = authenticate(username=user_obj.username, password=password)
+            # user_obj = self.user_model.objects.get(id=user_id)            
+            # user = authenticate(username=user_obj.username, password=password)
+            user, auth_token = TokenAuthentication.authenticate_credentials(password) 
 
             if user:
                 return True
@@ -107,3 +109,8 @@ class Command(BaseCommand):
         except Exception as e:
             self.logger.error("An error has occurred during eJabberd external authentication: %s" % e)
             self.to_ejabberd(success)
+
+class TokenAuthentication(KnoxTokenAuthentication):
+
+    def validate_user(self, auth_token):
+        return (auth_token.user, auth_token)
