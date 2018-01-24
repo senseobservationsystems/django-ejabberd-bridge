@@ -56,7 +56,8 @@ class Command(BaseCommand):
         try:
             # user_obj = self.user_model.objects.get(id=user_id)            
             # user = authenticate(username=user_obj.username, password=password)
-            user, auth_token = TokenAuthentication.authenticate_credentials(password) 
+            token_auth = TokenAuthentication()
+            user, auth_token = token_auth.authenticate_credentials(password) 
 
             if user:
                 return True

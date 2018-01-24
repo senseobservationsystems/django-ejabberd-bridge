@@ -82,73 +82,73 @@ class AuthBridgeTestCase(TestCase):
         """
         Tests isuser command with a existent and valid user
         """
-        username = "admin"
-        self.assertTrue(self.cmd.isuser(username=username, server=self.srv))
+        user_iduser_id = 1
+        self.assertTrue(self.cmd.isuser(user_id=user_id, server=self.srv))
 
     def test_isuser_does_not_exists(self):
         """
         Tests isuser command with an user which does not exist
         """
-        username = "user_that_does_not_exist"
-        self.assertFalse(self.cmd.isuser(username=username, server=self.srv))
+        user_id = 30
+        self.assertFalse(self.cmd.isuser(user_id=user_id, server=self.srv))
 
     def test_isuser_is_disabled(self):
         """
         Tests isuser command with an user which is disabled
         """
-        username = "user01"
-        self.assertFalse(self.cmd.isuser(username=username, server=self.srv))
+        user_id = 2
+        self.assertFalse(self.cmd.isuser(user_id=user_id, server=self.srv))
 
     def test_auth_ok(self):
         """
         Tests auth command with a right user and password pair
         """
-        username = "user02"
+        user_id = 3
         password = "password"
-        self.assertTrue(self.cmd.auth(username=username, server=self.srv, password=password))
+        self.assertTrue(self.cmd.auth(user_id=user_id, server=self.srv, password=password))
 
     def test_auth_wrong_password(self):
         """
         Tests auth command with a right user but wrong password
         """
-        username = "user02"
+        user_id = 1
         password = "WRONG"
-        self.assertFalse(self.cmd.auth(username=username, server=self.srv, password=password))
+        self.assertFalse(self.cmd.auth(user_id=user_id, server=self.srv, password=password))
 
     def test_auth_does_not_exist(self):
         """
         Tests auth command with a non existent user
         """
-        username = "user_that_does_not_exists"
+        user_id = "user_that_does_not_exists"
         password = "password"
-        self.assertFalse(self.cmd.auth(username=username, server=self.srv, password=password))
+        self.assertFalse(self.cmd.auth(user_id=user_id, server=self.srv, password=password))
 
     def test_auth_not_active(self):
         """
         Tests auth command with a right user and password pair but user is not active
         """
-        username = "user01"
+        user_id = 2
         password = "password"
-        self.assertFalse(self.cmd.auth(username=username, server=self.srv, password=password))
+        self.assertFalse(self.cmd.auth(user_id=user_id, server=self.srv, password=password))
 
     def test_setpass_ok(self):
         """
         Tests setpass command with a right user and a new password
         """
-        username = "user02"
+        user_id = 3
         password = "new_password"
-        self.assertTrue(self.cmd.setpass(username=username, server=self.srv, password=password))
+        self.assertTrue(self.cmd.setpass(user_id=user_id, server=self.srv, password=password))
 
-        user = get_user_model().objects.get(username=username)
+        user = get_user_model().objects.get(id=user_id)
         self.assertTrue(user.check_password(password))
 
     def test_setpass_does_not_exist(self):
         """
         Tests setpass command with a non existent user
         """
-        username = "user_that_does_not_exists"
+        user_id = "user_that_does_not_exists"
         password = "new_password"
-        self.assertFalse(self.cmd.setpass(username=username, server=self.srv, password=password))
+        self.assertFalse(self.cmd.setpass(user_id=user_id, server=self.srv, password=password))
 
     def _execute_cmd_handle(self, params):
         data = struct.pack(">H", len(params)) + params.encode("utf-8")
