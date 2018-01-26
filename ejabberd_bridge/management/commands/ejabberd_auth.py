@@ -25,11 +25,16 @@ from knox.auth import TokenAuthentication as KnoxTokenAuthentication
 
 __author__ = "taufik"
 
+class TokenAuthentication(KnoxTokenAuthentication):
+
+    def validate_user(self, auth_token):
+        return (auth_token.user, auth_token)
 
 class Command(BaseCommand):
 
     logger = logging.getLogger(__name__)
     user_model = get_user_model()
+    token_auth = TokenAuthentication()
 
     def from_ejabberd(self, encoding="utf-8"):
         """
@@ -50,20 +55,13 @@ class Command(BaseCommand):
         sys.stdout.write(b.decode("utf-8"))
         sys.stdout.flush()
 
-    def auth(self, user_id=None, server="localhost", password=None):
+    def auth(self, user_id=None, server="localhost", token=None):
         self.logger.debug("Authenticating %s on server %s" % (user_id, server))
+        user, auth_token = self.token_auth.authenticate_credentials(token)
 
-        try:
-            # user_obj = self.user_model.objects.get(id=user_id)            
-            # user = authenticate(username=user_obj.username, password=password)
-            token_auth = TokenAuthentication()
-            user, auth_token = token_auth.authenticate_credentials(password) 
-
-            if user:
-                return True
-            else:
-                return False
-        except User.DoesNotExist:
+        if user :
+            return True
+        else:
             return False
 
     def isuser(self, user_id=None, server="localhost"):
@@ -110,8 +108,3 @@ class Command(BaseCommand):
         except Exception as e:
             self.logger.error("An error has occurred during eJabberd external authentication: %s" % e)
             self.to_ejabberd(success)
-
-class TokenAuthentication(KnoxTokenAuthentication):
-
-    def validate_user(self, auth_token):
-        return (auth_token.user, auth_token)

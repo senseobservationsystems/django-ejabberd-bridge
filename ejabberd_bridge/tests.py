@@ -16,12 +16,16 @@
 from io import StringIO
 import io
 import struct
+import datetime
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
 from django.test import TestCase
 from mock import patch
 from ejabberd_bridge.management.commands import ejabberd_auth
+from rest_framework import exceptions
+from knox.models import AuthToken
 
-__author__ = 'fabio'
+__author__ = 'taufik'
 
 
 class AuthBridgeTestCase(TestCase):
@@ -31,6 +35,7 @@ class AuthBridgeTestCase(TestCase):
         super(AuthBridgeTestCase, self).setUp()
         self.cmd = ejabberd_auth.Command()
         self.srv = "localhost"
+        self.user_model = get_user_model()
 
     def tearDown(self):
         pass
@@ -45,7 +50,7 @@ class AuthBridgeTestCase(TestCase):
         """
         Tests the parsing of the auth command
         """
-        params = "auth:User:Server:Password"
+        params = "auth:User:Server:token"
         self._check_cmd_parsing(params)
 
     def test_from_jabber_isuser(self):
@@ -59,7 +64,7 @@ class AuthBridgeTestCase(TestCase):
         """
         Tests the parsing of the setpass command
         """
-        params = "setpass:User:Server:Password"
+        params = "setpass:User:Server:token"
         self._check_cmd_parsing(params)
 
     def test_to_jabber_true(self):
@@ -82,7 +87,7 @@ class AuthBridgeTestCase(TestCase):
         """
         Tests isuser command with a existent and valid user
         """
-        user_iduser_id = 1
+        user_id = 1
         self.assertTrue(self.cmd.isuser(user_id=user_id, server=self.srv))
 
     def test_isuser_does_not_exists(self):
@@ -92,63 +97,56 @@ class AuthBridgeTestCase(TestCase):
         user_id = 30
         self.assertFalse(self.cmd.isuser(user_id=user_id, server=self.srv))
 
-    def test_isuser_is_disabled(self):
-        """
-        Tests isuser command with an user which is disabled
-        """
-        user_id = 2
-        self.assertFalse(self.cmd.isuser(user_id=user_id, server=self.srv))
-
     def test_auth_ok(self):
         """
-        Tests auth command with a right user and password pair
+        Tests auth command with a right user and token pair
         """
         user_id = 3
-        password = "password"
-        self.assertTrue(self.cmd.auth(user_id=user_id, server=self.srv, password=password))
+        user = self.user_model.objects.get(id=user_id)
+        token = AuthToken.objects.create(user)
+        self.assertTrue(self.cmd.auth(user_id=user_id, server=self.srv, token=token))
 
-    def test_auth_wrong_password(self):
+    def test_auth_wrong_token(self):
         """
-        Tests auth command with a right user but wrong password
+        Tests auth command with a right user but wrong token
         """
         user_id = 1
-        password = "WRONG"
-        self.assertFalse(self.cmd.auth(user_id=user_id, server=self.srv, password=password))
+        token = "WRONG"
+        with self.assertRaises(exceptions.AuthenticationFailed) as cm:
+            self.cmd.auth(user_id=user_id, server=self.srv, token=token)
+        self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
+
+    def test_auth_token_expired(self):
+        """
+        Tests auth command with a right user but token expired
+        """
+        user_id = 1
+        user = self.user_model.objects.get(id=user_id)
+        token = AuthToken.objects.create(user=user, expires=datetime.timedelta(seconds=0))
+        with self.assertRaises(exceptions.AuthenticationFailed) as cm:
+            self.cmd.auth(user_id=user_id, server=self.srv, token=token)
+        self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
 
     def test_auth_does_not_exist(self):
         """
         Tests auth command with a non existent user
         """
         user_id = "user_that_does_not_exists"
-        password = "password"
-        self.assertFalse(self.cmd.auth(user_id=user_id, server=self.srv, password=password))
+        token = "token"
+        with self.assertRaises(exceptions.AuthenticationFailed) as cm:
+            self.cmd.auth(user_id=user_id, server=self.srv, token=token)
+        self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
 
     def test_auth_not_active(self):
         """
-        Tests auth command with a right user and password pair but user is not active
+        Tests auth command with a right user and token pair but user is not active
         """
         user_id = 2
-        password = "password"
-        self.assertFalse(self.cmd.auth(user_id=user_id, server=self.srv, password=password))
-
-    def test_setpass_ok(self):
-        """
-        Tests setpass command with a right user and a new password
-        """
-        user_id = 3
-        password = "new_password"
-        self.assertTrue(self.cmd.setpass(user_id=user_id, server=self.srv, password=password))
-
-        user = get_user_model().objects.get(id=user_id)
-        self.assertTrue(user.check_password(password))
-
-    def test_setpass_does_not_exist(self):
-        """
-        Tests setpass command with a non existent user
-        """
-        user_id = "user_that_does_not_exists"
-        password = "new_password"
-        self.assertFalse(self.cmd.setpass(user_id=user_id, server=self.srv, password=password))
+        user = self.user_model.objects.get(id=user_id)
+        token = default_token_generator.make_token(user)
+        with self.assertRaises(exceptions.AuthenticationFailed) as cm:
+            self.cmd.auth(user_id=user_id, server=self.srv, token=token)
+        self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
 
     def _execute_cmd_handle(self, params):
         data = struct.pack(">H", len(params)) + params.encode("utf-8")
@@ -161,21 +159,34 @@ class AuthBridgeTestCase(TestCase):
         """
         Tests successful auth command thorugh the handle method
         """
-        params = "auth:user02:localhost:password"
+        user_id = 3
+        user = self.user_model.objects.get(id=user_id)
+        token = AuthToken.objects.create(user)
+        params = "auth:{}:localhost:{}".format(user_id, token)
         self.assertEqual('\x00\x02\x00\x01', self._execute_cmd_handle(params))
 
     def test_handle_auth_nok(self):
         """
         Tests failing auth command thorugh the handle method
         """
-        params = "auth:User:Server:Password"
+        params = "auth:User:Server:token"
+        self.assertEqual('\x00\x02\x00\x00', self._execute_cmd_handle(params))
+    
+    def test_handle_auth_token_expired(self):
+        """
+        Tests failing auth command because token was expired thorugh the handle method
+        """
+        user_id = 3
+        user = self.user_model.objects.get(id=user_id)
+        token = AuthToken.objects.create(user=user, expires=datetime.timedelta(seconds=0))
+        params = "auth:{}:localhost:{}".format(user_id, token)
         self.assertEqual('\x00\x02\x00\x00', self._execute_cmd_handle(params))
 
     def test_handle_isuser_ok(self):
         """
         Tests successful isuser command thorugh the handle method
         """
-        params = "isuser:user02:localhost"
+        params = "isuser:3:localhost"
         self.assertEqual('\x00\x02\x00\x01', self._execute_cmd_handle(params))
 
     def test_handle_isuser_nok(self):
@@ -183,20 +194,6 @@ class AuthBridgeTestCase(TestCase):
         Tests failing isuser command thorugh the handle method
         """
         params = "isuser:User:Server"
-        self.assertEqual('\x00\x02\x00\x00', self._execute_cmd_handle(params))
-
-    def test_handle_setpass_ok(self):
-        """
-        Tests successful setpass command thorugh the handle method
-        """
-        params = "setpass:user02:localhost:new_password"
-        self.assertEqual('\x00\x02\x00\x01', self._execute_cmd_handle(params))
-
-    def test_handle_setpass_nok(self):
-        """
-        Tests failing setpass command thorugh the handle method
-        """
-        params = "setpass:User:Server:Password"
         self.assertEqual('\x00\x02\x00\x00', self._execute_cmd_handle(params))
 
     def test_handle_invalid_data(self):
