@@ -56,7 +56,7 @@ class Command(BaseCommand):
             user_obj = self.user_model.objects.get(id=user_id)            
             user = authenticate(username=user_obj.username, password=password)
 
-            if user :
+            if user:
                 return True
             else:
                 return False
@@ -92,6 +92,9 @@ class Command(BaseCommand):
             while True:
                 data = self.from_ejabberd()
                 self.logger.debug("Command is %s" % data[0])
+                if not isinstance(data[1], (int, long)):
+                    success = False
+
                 if data[0] == "auth":
                     success = self.auth(data[1], data[2], data[3])
                 elif data[0] == "isuser":
