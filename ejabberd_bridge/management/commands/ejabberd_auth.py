@@ -57,11 +57,18 @@ class Command(BaseCommand):
 
     def auth(self, user_id=None, server="localhost", token=None):
         self.logger.debug("Authenticating %s on server %s" % (user_id, server))
-        user, auth_token = self.token_auth.authenticate_credentials(token)
+        try:
+            user, auth_token = self.token_auth.authenticate_credentials(token)
 
-        if user :
-            return True
-        else:
+            if user :
+                self.logger.debug("Login successfully %s on server %s" % (user_id, server))
+                return True
+            else:
+                self.logger.debug("Login failed, invalid credentials %s on server %s" % (user_id, server))
+                return False
+        except Exception as e:
+            self.logger.debug("Login Failed, Error Exception %s on server %s" % (user_id, server))
+            self.logger.debug(e)
             return False
 
     def isuser(self, user_id=None, server="localhost"):
