@@ -21,14 +21,20 @@ from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
+from knox.auth import TokenAuthentication as KnoxTokenAuthentication
 
 __author__ = "taufik"
 
+class TokenAuthentication(KnoxTokenAuthentication):
+
+    def validate_user(self, auth_token):
+        return (auth_token.user, auth_token)
 
 class Command(BaseCommand):
 
     logger = logging.getLogger(__name__)
     user_model = get_user_model()
+    token_auth = TokenAuthentication()
 
     def from_ejabberd(self, encoding="utf-8"):
         """
@@ -49,18 +55,20 @@ class Command(BaseCommand):
         sys.stdout.write(b.decode("utf-8"))
         sys.stdout.flush()
 
-    def auth(self, user_id=None, server="localhost", password=None):
+    def auth(self, user_id=None, server="localhost", token=None):
         self.logger.debug("Authenticating %s on server %s" % (user_id, server))
-
         try:
-            user_obj = self.user_model.objects.get(id=user_id)            
-            user = authenticate(username=user_obj.username, password=password)
+            user, auth_token = self.token_auth.authenticate_credentials(token)
 
-            if user:
+            if user :
+                self.logger.debug("Login successfully %s on server %s" % (user_id, server))
                 return True
             else:
+                self.logger.debug("Login failed, invalid credentials %s on server %s" % (user_id, server))
                 return False
-        except User.DoesNotExist:
+        except Exception as e:
+            self.logger.debug("Login Failed, Error Exception %s on server %s" % (user_id, server))
+            self.logger.debug(e)
             return False
 
     def isuser(self, user_id=None, server="localhost"):
