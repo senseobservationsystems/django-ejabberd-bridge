@@ -60,7 +60,7 @@ class Command(BaseCommand):
         try:
             user, auth_token = self.token_auth.authenticate_credentials(token)
 
-            if user :
+            if user and user.id == int(user_id):
                 self.logger.debug("Login successfully %s on server %s" % (user_id, server))
                 return True
             else:
@@ -69,7 +69,7 @@ class Command(BaseCommand):
         except Exception as e:
             self.logger.debug("Login Failed, Error Exception %s on server %s" % (user_id, server))
             self.logger.debug(e)
-            return False
+            raise e
 
     def isuser(self, user_id=None, server="localhost"):
         """
