@@ -148,6 +148,16 @@ class AuthBridgeTestCase(TestCase):
             self.cmd.auth(user_id=user_id, server=self.srv, token=token)
         self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
 
+    def test_auth_invalid_user_id(self):
+        """
+        Tests auth command with a non existent user
+        """
+        user_id = 3
+        wrong_user_id = 4
+        user = self.user_model.objects.get(id=user_id)
+        token = AuthToken.objects.create(user)
+        self.assertEqual(self.cmd.auth(user_id=wrong_user_id, server=self.srv, token=token), False)
+
     def _execute_cmd_handle(self, params):
         data = struct.pack(">H", len(params)) + params.encode("utf-8")
         with patch("sys.stdin", StringIO(data.decode("utf-8"))), patch("sys.stdout",
@@ -205,3 +215,14 @@ class AuthBridgeTestCase(TestCase):
         with patch("sys.stdin", io.BytesIO(data)), patch("sys.stdout", new_callable=StringIO) as stdout_mocked:
             self.cmd.handle(params, run_forever=False)
         self.assertEqual('\x00\x02\x00\x00', stdout_mocked.getvalue())
+
+    def test_handle_auth_invalid_user_id(self):
+        """
+        Tests successful auth command thorugh the handle method
+        """
+        user_id = 3
+        wrong_user_id = 4
+        user = self.user_model.objects.get(id=user_id)
+        token = AuthToken.objects.create(user)
+        params = "auth:{}:localhost:{}".format(wrong_user_id, token)
+        self.assertEqual('\x00\x02\x00\x00', self._execute_cmd_handle(params))
