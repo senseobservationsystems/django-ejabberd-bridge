@@ -60,7 +60,7 @@ class Command(BaseCommand):
         try:
             user, auth_token = self.token_auth.authenticate_credentials(token)
 
-            if user :
+            if user and user.id == user_id:
                 self.logger.debug("Login successfully %s on server %s" % (user_id, server))
                 return True
             else:
