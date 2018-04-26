@@ -83,6 +83,10 @@ class Command(BaseCommand):
         except User.DoesNotExist:
             return False
 
+    def validate_data_from_ejabberd(self, data):
+        if not isinstance(data[1], (int, long)):
+            return False
+
     def handle(self, *args, **options):
         """
         Gathers parameters from eJabberd and executes authentication
@@ -100,15 +104,14 @@ class Command(BaseCommand):
             while True:
                 data = self.from_ejabberd()
                 self.logger.debug("Command is %s" % data[0])
-                if not isinstance(data[1], (int, long)):
-                    success = False
 
-                if data[0] == "auth":
-                    success = self.auth(data[1], data[2], data[3])
-                elif data[0] == "isuser":
-                    success = self.isuser(data[1], data[2])
-                elif data[0] == "setpass":
-                    success = False
+                if self.validate_data_from_ejabberd(data):
+                    if data[0] == "auth":
+                        success = self.auth(data[1], data[2], data[3])
+                    elif data[0] == "isuser":
+                        success = self.isuser(data[1], data[2])
+                    elif data[0] == "setpass":
+                        success = False
                 self.to_ejabberd(success)
                 if not options.get("run_forever", True):
                     break
