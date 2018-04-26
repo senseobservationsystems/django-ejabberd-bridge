@@ -18,10 +18,11 @@ import logging
 import struct
 import sys
 from django.conf import settings
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from knox.auth import TokenAuthentication as KnoxTokenAuthentication
+from rest_framework.exceptions import AuthenticationFailed
 
 __author__ = "taufik"
 
@@ -115,6 +116,9 @@ class Command(BaseCommand):
                 self.to_ejabberd(success)
                 if not options.get("run_forever", True):
                     break
+        except AuthenticationFailed:
+            pass
         except Exception as e:
             self.logger.error("An error has occurred during eJabberd external authentication: %s" % e)
+        finally:
             self.to_ejabberd(success)
