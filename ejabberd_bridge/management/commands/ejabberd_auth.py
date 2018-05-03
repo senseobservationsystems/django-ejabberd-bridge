@@ -59,6 +59,8 @@ class Command(BaseCommand):
     def auth(self, user_id=None, server="localhost", token=None):
         self.logger.debug("Authenticating %s on server %s" % (user_id, server))
         try:
+            user_id = int(user_id)
+
             user, auth_token = self.token_auth.authenticate_credentials(token)
 
             if user and user.id == int(user_id):
@@ -79,13 +81,13 @@ class Command(BaseCommand):
         self.logger.debug("Validating %s on server %s" % (user_id, server))
 
         try:
+            user_id = int(user_id)
+            if not isinstance(user_id, (int, long)):
+                return False
+
             user = self.user_model.objects.get(id=user_id)
             return True
         except User.DoesNotExist:
-            return False
-
-    def validate_data_from_ejabberd(self, data):
-        if not isinstance(data[1], (int, long)):
             return False
 
     def handle(self, *args, **options):
@@ -105,20 +107,18 @@ class Command(BaseCommand):
             while True:
                 data = self.from_ejabberd()
                 self.logger.debug("Command is %s" % data[0])
-
-                if self.validate_data_from_ejabberd(data):
-                    if data[0] == "auth":
-                        success = self.auth(data[1], data[2], data[3])
-                    elif data[0] == "isuser":
-                        success = self.isuser(data[1], data[2])
-                    elif data[0] == "setpass":
-                        success = False
+                if data[0] == "auth":
+                    success = self.auth(data[1], data[2], data[3])
+                elif data[0] == "isuser":
+                    success = self.isuser(data[1], data[2])
+                elif data[0] == "setpass":
+                    success = False
                 self.to_ejabberd(success)
                 if not options.get("run_forever", True):
                     break
         except AuthenticationFailed:
+            self.to_ejabberd(success)
             pass
         except Exception as e:
             self.logger.error("An error has occurred during eJabberd external authentication: %s" % e)
-        finally:
             self.to_ejabberd(success)

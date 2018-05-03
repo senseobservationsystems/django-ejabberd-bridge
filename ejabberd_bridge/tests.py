@@ -133,9 +133,9 @@ class AuthBridgeTestCase(TestCase):
         """
         user_id = "user_that_does_not_exists"
         token = "token"
-        with self.assertRaises(exceptions.AuthenticationFailed) as cm:
+        with self.assertRaises(ValueError) as cm:
             self.cmd.auth(user_id=user_id, server=self.srv, token=token)
-        self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
+        self.assertEqual(cm.exception.message, "invalid literal for int() with base 10: 'user_that_does_not_exists'")
 
     def test_auth_not_active(self):
         """
