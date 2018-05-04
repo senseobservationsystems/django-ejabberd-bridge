@@ -69,6 +69,10 @@ class Command(BaseCommand):
             else:
                 self.logger.debug("Login failed, invalid credentials %s on server %s" % (user_id, server))
                 return False
+        except ValueError:
+            return False
+        except AuthenticationFailed:
+            return False
         except Exception as e:
             self.logger.debug("Login Failed, Error Exception %s on server %s" % (user_id, server))
             self.logger.debug(e)
@@ -82,11 +86,11 @@ class Command(BaseCommand):
 
         try:
             user_id = int(user_id)
-            if not isinstance(user_id, (int, long)):
-                return False
 
             user = self.user_model.objects.get(id=user_id)
             return True
+        except ValueError:
+            return False
         except User.DoesNotExist:
             return False
 
@@ -116,9 +120,6 @@ class Command(BaseCommand):
                 self.to_ejabberd(success)
                 if not options.get("run_forever", True):
                     break
-        except AuthenticationFailed:
-            self.to_ejabberd(success)
-            pass
         except Exception as e:
             self.logger.error("An error has occurred during eJabberd external authentication: %s" % e)
             self.to_ejabberd(success)
