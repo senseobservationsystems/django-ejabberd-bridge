@@ -112,9 +112,7 @@ class AuthBridgeTestCase(TestCase):
         """
         user_id = 1
         token = "WRONG"
-        with self.assertRaises(exceptions.AuthenticationFailed) as cm:
-            self.cmd.token_auth.authenticate_credentials(token)
-        self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
+        self.assertFalse(self.cmd.auth(user_id=user_id, server=self.srv, token=token))
 
     def test_auth_token_expired(self):
         """
@@ -123,9 +121,7 @@ class AuthBridgeTestCase(TestCase):
         user_id = 1
         user = self.user_model.objects.get(id=user_id)
         token = AuthToken.objects.create(user=user, expires=datetime.timedelta(seconds=0))
-        with self.assertRaises(exceptions.AuthenticationFailed) as cm:
-            self.cmd.token_auth.authenticate_credentials(token)
-        self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
+        self.assertFalse(self.cmd.auth(user_id=user_id, server=self.srv, token=token))
 
     def test_auth_does_not_exist(self):
         """
@@ -142,9 +138,7 @@ class AuthBridgeTestCase(TestCase):
         user_id = 2
         user = self.user_model.objects.get(id=user_id)
         token = default_token_generator.make_token(user)
-        with self.assertRaises(exceptions.AuthenticationFailed) as cm:
-            self.cmd.token_auth.authenticate_credentials(token)
-        self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
+        self.assertFalse(self.cmd.auth(user_id=user_id, server=self.srv, token=token))
 
     def test_auth_invalid_user_id(self):
         """
