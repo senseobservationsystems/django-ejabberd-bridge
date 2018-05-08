@@ -18,10 +18,11 @@ import logging
 import struct
 import sys
 from django.conf import settings
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from knox.auth import TokenAuthentication as KnoxTokenAuthentication
+from rest_framework.exceptions import AuthenticationFailed
 
 __author__ = "taufik"
 
@@ -58,6 +59,8 @@ class Command(BaseCommand):
     def auth(self, user_id=None, server="localhost", token=None):
         self.logger.debug("Authenticating %s on server %s" % (user_id, server))
         try:
+            user_id = int(user_id)
+
             user, auth_token = self.token_auth.authenticate_credentials(token)
 
             if user and user.id == int(user_id):
@@ -66,6 +69,10 @@ class Command(BaseCommand):
             else:
                 self.logger.debug("Login failed, invalid credentials %s on server %s" % (user_id, server))
                 return False
+        except ValueError:
+            return False
+        except AuthenticationFailed:
+            return False
         except Exception as e:
             self.logger.debug("Login Failed, Error Exception %s on server %s" % (user_id, server))
             self.logger.debug(e)
@@ -78,8 +85,12 @@ class Command(BaseCommand):
         self.logger.debug("Validating %s on server %s" % (user_id, server))
 
         try:
+            user_id = int(user_id)
+
             user = self.user_model.objects.get(id=user_id)
             return True
+        except ValueError:
+            return False
         except User.DoesNotExist:
             return False
 
@@ -100,9 +111,6 @@ class Command(BaseCommand):
             while True:
                 data = self.from_ejabberd()
                 self.logger.debug("Command is %s" % data[0])
-                if not isinstance(data[1], (int, long)):
-                    success = False
-
                 if data[0] == "auth":
                     success = self.auth(data[1], data[2], data[3])
                 elif data[0] == "isuser":
