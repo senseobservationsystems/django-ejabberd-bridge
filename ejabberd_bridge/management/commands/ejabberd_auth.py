@@ -26,10 +26,12 @@ from rest_framework.exceptions import AuthenticationFailed
 
 __author__ = "taufik"
 
+
 class TokenAuthentication(KnoxTokenAuthentication):
 
     def validate_user(self, auth_token):
         return (auth_token.user, auth_token)
+
 
 class Command(BaseCommand):
 
@@ -76,7 +78,7 @@ class Command(BaseCommand):
         except Exception as e:
             self.logger.debug("Login Failed, Error Exception %s on server %s" % (user_id, server))
             self.logger.debug(e)
-            raise e
+            return False
 
     def isuser(self, user_id=None, server="localhost"):
         """
@@ -87,7 +89,7 @@ class Command(BaseCommand):
         try:
             user_id = int(user_id)
 
-            user = self.user_model.objects.get(id=user_id)
+            self.user_model.objects.get(id=user_id)
             return True
         except ValueError:
             return False
@@ -107,19 +109,15 @@ class Command(BaseCommand):
 
         self.logger.debug("Starting serving authentication requests for eJabberd")
         success = False
-        try:
-            while True:
-                data = self.from_ejabberd()
-                self.logger.debug("Command is %s" % data[0])
-                if data[0] == "auth":
-                    success = self.auth(data[1], data[2], data[3])
-                elif data[0] == "isuser":
-                    success = self.isuser(data[1], data[2])
-                elif data[0] == "setpass":
-                    success = False
-                self.to_ejabberd(success)
-                if not options.get("run_forever", True):
-                    break
-        except Exception as e:
-            self.logger.error("An error has occurred during eJabberd external authentication: %s" % e)
+        while True:
+            data = self.from_ejabberd()
+            self.logger.debug("Command is %s" % data[0])
+            if data[0] == "auth":
+                success = self.auth(data[1], data[2], data[3])
+            elif data[0] == "isuser":
+                success = self.isuser(data[1], data[2])
+            elif data[0] == "setpass":
+                success = False
             self.to_ejabberd(success)
+            if not options.get("run_forever", True):
+                break
