@@ -1,4 +1,4 @@
-Django>=1.6
+Django>=2.2.4
 mock>=1.0.1
-django-rest-knox==3.0.3
-djangorestframework==3.7.3
+django-rest-knox==4.1.0
+djangorestframework==3.9.4

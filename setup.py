@@ -46,7 +46,7 @@ class RunTests(Command):
 
 
 setup(name='django-ejabberd-bridge',
-      version='0.0.1',
+      version='0.0.2',
       description='A django app for ejabberd external authentication',
       author='Fabio Falcinelli',
       author_email='fabio.falcinelli@gmail.com',
