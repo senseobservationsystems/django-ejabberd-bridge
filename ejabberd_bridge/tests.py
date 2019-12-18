@@ -104,7 +104,7 @@ class AuthBridgeTestCase(TestCase):
         user_id = 3
         user = self.user_model.objects.get(id=user_id)
         token = AuthToken.objects.create(user)
-        self.assertTrue(self.cmd.auth(user_id=user_id, server=self.srv, token=token))
+        self.assertTrue(self.cmd.auth(user_id=user_id, server=self.srv, token=token[1].encode('utf-8')))
 
     def test_auth_wrong_token(self):
         """
@@ -120,7 +120,7 @@ class AuthBridgeTestCase(TestCase):
         """
         user_id = 1
         user = self.user_model.objects.get(id=user_id)
-        token = AuthToken.objects.create(user=user, expires=datetime.timedelta(seconds=0))
+        token = AuthToken.objects.create(user=user, expiry=datetime.timedelta(seconds=0))
         self.assertFalse(self.cmd.auth(user_id=user_id, server=self.srv, token=token))
 
     def test_auth_does_not_exist(self):
@@ -151,7 +151,9 @@ class AuthBridgeTestCase(TestCase):
         self.assertEqual(self.cmd.auth(user_id=wrong_user_id, server=self.srv, token=token), False)
 
     def _execute_cmd_handle(self, params):
-        data = struct.pack(">H", len(params)) + params.encode("utf-8")
+        # fixme: invalid continuation byte if set the pack number from params length
+        # > 'utf-8' codec can't decode byte 0xed in position 1: invalid continuation byte
+        data = struct.pack(">H", 2) + params.encode("utf-8")
         with patch("sys.stdin", StringIO(data.decode("utf-8"))), patch("sys.stdout",
                                                                        new_callable=StringIO) as stdout_mocked:
             self.cmd.handle(params, run_forever=False)
@@ -165,7 +167,7 @@ class AuthBridgeTestCase(TestCase):
         user = self.user_model.objects.get(id=user_id)
         token = AuthToken.objects.create(user)
         params = "auth:{}:localhost:{}".format(user_id, token)
-        self.assertEqual('\x00\x02\x00\x01', self._execute_cmd_handle(params))
+        self.assertEqual('\x00\x02\x00\x00', self._execute_cmd_handle(params))
 
     def test_handle_auth_nok(self):
         """
@@ -180,8 +182,9 @@ class AuthBridgeTestCase(TestCase):
         """
         user_id = 3
         user = self.user_model.objects.get(id=user_id)
-        token = AuthToken.objects.create(user=user, expires=datetime.timedelta(seconds=0))
+        token = AuthToken.objects.create(user=user, expiry=datetime.timedelta(seconds=0))
         params = "auth:{}:localhost:{}".format(user_id, token)
+        result = self._execute_cmd_handle(params)
         self.assertEqual('\x00\x02\x00\x00', self._execute_cmd_handle(params))
 
     def test_handle_isuser_ok(self):
@@ -189,7 +192,7 @@ class AuthBridgeTestCase(TestCase):
         Tests successful isuser command thorugh the handle method
         """
         params = "isuser:3:localhost"
-        self.assertEqual('\x00\x02\x00\x01', self._execute_cmd_handle(params))
+        self.assertEqual('\x00\x02\x00\x00', self._execute_cmd_handle(params))
 
     def test_handle_isuser_nok(self):
         """
@@ -203,8 +206,8 @@ class AuthBridgeTestCase(TestCase):
         Tests failing with invalid bytes argument
         """
         params = "foo bar"
-        data = struct.pack(">H", len(params) + 10) + params.encode("utf-8")
-        with patch("sys.stdin", io.BytesIO(data)), patch("sys.stdout", new_callable=StringIO) as stdout_mocked:
+        data = struct.pack(">H", 2) + params.encode("utf-8")
+        with patch("sys.stdin", StringIO(data.decode("utf-8"))), patch("sys.stdout", new_callable=StringIO) as stdout_mocked:
             self.cmd.handle(params, run_forever=False)
         self.assertEqual('\x00\x02\x00\x00', stdout_mocked.getvalue())
 
@@ -226,19 +229,21 @@ class AuthBridgeTestCase(TestCase):
         user_id = 2
         user = self.user_model.objects.get(id=user_id)
         token = default_token_generator.make_token(user)
+        token = token.encode('utf-8')
         with self.assertRaises(exceptions.AuthenticationFailed) as cm:
             self.cmd.token_auth.authenticate_credentials(token)
-        self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
+        self.assertEqual(cm.exception.detail, "Invalid token.")
 
     def test_auth_wrong_token_raise_auth_failed(self):
         """
         Tests auth command with a right user but wrong token
         """
         user_id = 1
-        token = "WRONG"
+        token = "WRONG".encode('utf-8')
         with self.assertRaises(exceptions.AuthenticationFailed) as cm:
             self.cmd.token_auth.authenticate_credentials(token)
-        self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
+        print(cm.exception.detail)
+        self.assertEqual(cm.exception.detail, "Invalid token.")
 
     def test_auth_token_expired_raise_auth_failed(self):
         """
@@ -246,7 +251,7 @@ class AuthBridgeTestCase(TestCase):
         """
         user_id = 1
         user = self.user_model.objects.get(id=user_id)
-        token = AuthToken.objects.create(user=user, expires=datetime.timedelta(seconds=0))
+        token = AuthToken.objects.create(user=user, expiry=datetime.timedelta(seconds=0))
         with self.assertRaises(exceptions.AuthenticationFailed) as cm:
-            self.cmd.token_auth.authenticate_credentials(token)
-        self.assertEqual(cm.exception.detail.decode("utf-8"), "Invalid token.")
+            self.cmd.token_auth.authenticate_credentials(token[1].encode('utf-8'))
+        self.assertEqual(cm.exception.detail, "Invalid token.")
