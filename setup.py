@@ -29,13 +29,12 @@ class RunTests(Command):
     extra_args = []
 
     def run(self):
-        for env_name, env_value in self.extra_env.items():
+        for env_name, env_value in list(self.extra_env.items()):
             os.environ[env_name] = str(env_value)
 
         os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.settings")
 
         from django.core.management import execute_from_command_line
-
         execute_from_command_line(sys.argv)
 
     def initialize_options(self):
@@ -46,7 +45,7 @@ class RunTests(Command):
 
 
 setup(name='django-ejabberd-bridge',
-      version='0.0.1',
+      version='0.0.2',
       description='A django app for ejabberd external authentication',
       author='Fabio Falcinelli',
       author_email='fabio.falcinelli@gmail.com',
