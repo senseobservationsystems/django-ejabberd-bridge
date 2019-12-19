@@ -63,6 +63,10 @@ class Command(BaseCommand):
         try:
             user_id = int(user_id)
 
+            # force to type
+            if isinstance(token, str):
+                token = token.encode('utf-8')
+
             user, auth_token = self.token_auth.authenticate_credentials(token)
 
             if user and user.id == int(user_id):
