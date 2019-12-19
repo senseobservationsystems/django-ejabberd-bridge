@@ -111,6 +111,7 @@ class Command(BaseCommand):
         success = False
         while True:
             data = self.from_ejabberd()
+            self.logger.debug(data)
             self.logger.debug("Command is %s" % data[0])
             if data[0] == "auth":
                 success = self.auth(data[1], data[2], data[3])
