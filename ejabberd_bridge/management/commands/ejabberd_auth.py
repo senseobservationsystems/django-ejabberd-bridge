@@ -63,18 +63,14 @@ class Command(BaseCommand):
         try:
             user_id = int(user_id)
 
-            # force to type
-            self.logger.debug("check token type %s" % token)
-            self.logger.debug(type(token))
-            if isinstance(token, str):
+            # knox library trying to decode the token
+            # so we need to ensure if token is bytes
+            if not isinstance(token, bytes):
                 self.logger.debug("token is string")
                 token = token.encode('utf-8')
 
-            self.logger.debug("token")
-            self.logger.debug(type(token))
-
             user, auth_token = self.token_auth.authenticate_credentials(token)
-
+            
             if user and user.id == int(user_id):
                 self.logger.debug("Login successfully %s on server %s" % (user_id, server))
                 return True
@@ -82,8 +78,10 @@ class Command(BaseCommand):
                 self.logger.debug("Login failed, invalid credentials %s on server %s" % (user_id, server))
                 return False
         except ValueError:
+            self.logger.debug('Login failed, ValueError')
             return False
         except AuthenticationFailed:
+            self.logger.debug('Login failed, AuthenticationFailed')
             return False
         except Exception as e:
             self.logger.debug("Login Failed, Error Exception %s on server %s" % (user_id, server))
