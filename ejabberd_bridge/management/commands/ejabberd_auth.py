@@ -64,8 +64,14 @@ class Command(BaseCommand):
             user_id = int(user_id)
 
             # force to type
+            self.logger.debug("check token type %s" % token)
+            self.logger.debug(type(token))
             if isinstance(token, str):
+                self.logger.debug("token is string")
                 token = token.encode('utf-8')
+
+            self.logger.debug("token")
+            self.logger.debug(type(token))
 
             user, auth_token = self.token_auth.authenticate_credentials(token)
 
