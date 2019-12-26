@@ -104,7 +104,7 @@ class AuthBridgeTestCase(TestCase):
         user_id = 3
         user = self.user_model.objects.get(id=user_id)
         token = AuthToken.objects.create(user)
-        self.assertTrue(self.cmd.auth(user_id=user_id, server=self.srv, token=token[1].encode('utf-8')))
+        self.assertTrue(self.cmd.auth(user_id=user_id, server=self.srv, token=token[1]))
 
     def test_auth_wrong_token(self):
         """
